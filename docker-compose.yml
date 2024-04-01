@@ -1,0 +1,63 @@
+version: '3.7'
+
+services:
+  bolttech-web:
+    container_name: bolttech-web
+    build:
+      context: ./docker/nginx
+      args:
+        user: bolttech
+        UID: 501
+    ports:
+      - 350:80
+    volumes:
+      - ./src:/var/www
+    depends_on:
+      - bolttech-be
+    networks:
+      - bolttech-dev-network
+
+  bolttech-be:
+    container_name: bolttech-be
+    build:
+      context: ./docker/php
+      args:
+        user: bolttech
+        UID: 501
+    environment:
+      PHP_IDE_CONFIG: serverName=Docker
+      PHP_XDEBUG_ENABLED: 1
+      XDEBUG_CONFIG: remote_host=host.docker.internal remote_port=9005 # MacOS users
+    volumes:
+      - ./src:/var/www
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - ~/.ssh/id_rsa:/home/appuser/.ssh/bolttech
+    depends_on:
+      - bolttech-db
+    networks:
+      - bolttech-dev-network
+
+  bolttech-db:
+    container_name: bolttech-db
+    # image: mysql:8.0
+    build:
+      context: ./docker/database
+    ports:
+      - 36001:3306
+    environment:
+      MYSQL_DATABASE: BolttechDb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: root
+    command: mysqld --sql_mode="STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION"
+    volumes:
+      - bolttech-db-data:/var/lib/mysql
+    networks:
+      - bolttech-dev-network
+
+volumes:
+  bolttech-db-data:
+
+networks:
+  bolttech-dev-network:
+    external: true
